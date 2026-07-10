@@ -11,14 +11,15 @@ import {
 } from "@/components/ui/progress"
 
 const STAGES: { label: string; range: [number, number] }[] = [
-  { label: "Validating URL", range: [0, 18] },
-  { label: "Scanning website structure", range: [18, 45] },
-  { label: "Analyzing technology stack", range: [45, 72] },
-  { label: "Generating intelligence report", range: [72, 100] },
+  { label: "Connecting to website", range: [0, 20] },
+  { label: "Capturing page content", range: [20, 50] },
+  { label: "Taking screenshot", range: [50, 75] },
+  { label: "Building report", range: [75, 100] },
 ]
 
 export default function AnalysisLoading({ url }: { url: string }) {
   const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const stageIndex = Math.min(
     STAGES.findIndex((s) => progress < s.range[1]),
     STAGES.length - 1
@@ -28,27 +29,52 @@ export default function AnalysisLoading({ url }: { url: string }) {
   const startedAt = useRef(Date.now())
 
   useEffect(() => {
-    const duration = 2600
-    const interval = 32
-    const step = 100 / (duration / interval)
+    let cancelled = false
 
+    async function capture() {
+      try {
+        const res = await fetch("/api/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        })
+
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "Capture failed")
+        }
+
+        const data = await res.json()
+        if (cancelled) return
+
+        // Store in sessionStorage so the report page can read it
+        sessionStorage.setItem(
+          `capture:${url}`,
+          JSON.stringify(data)
+        )
+
+        // Navigate to report
+        router.push(`/report?url=${encodeURIComponent(url)}`)
+      } catch (err: any) {
+        if (cancelled) return
+        setError(err.message || "Failed to capture website")
+      }
+    }
+
+    capture()
+
+    // Progress bar animation while waiting
     const timer = setInterval(() => {
       const elapsed = Date.now() - startedAt.current
-      const ratio = Math.min(elapsed / duration, 1)
-      // Ease-out cubic for smooth deceleration
+      const ratio = Math.min(elapsed / 12000, 1)
       const eased = 1 - Math.pow(1 - ratio, 3)
       setProgress(eased * 100)
+    }, 32)
 
-      if (ratio >= 1) {
-        clearInterval(timer)
-        // Brief pause at 100% then navigate
-        setTimeout(() => {
-          router.push(`/report?url=${encodeURIComponent(url)}`)
-        }, 400)
-      }
-    }, interval)
-
-    return () => clearInterval(timer)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
   }, [url, router])
 
   return (
@@ -101,6 +127,19 @@ export default function AnalysisLoading({ url }: { url: string }) {
             <ProgressIndicator className="rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-150" />
           </Progress>
         </div>
+
+        {/* Error state */}
+        {error && (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-sm text-red-400">{error}</p>
+            <button
+              onClick={() => router.push("/")}
+              className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
       </div>
     </section>
   )

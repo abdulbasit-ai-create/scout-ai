@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -12,6 +12,7 @@ import {
   Lightbulb,
   Globe,
   FileText,
+  Loader2,
 } from "lucide-react"
 
 const MOCK = {
@@ -73,7 +74,35 @@ function ScoreCard({
 
 function ReportContent() {
   const searchParams = useSearchParams()
-  const url = searchParams.get("url") || "Unknown URL"
+  const url = searchParams.get("url") || ""
+  const [capture, setCapture] = useState<{
+    title: string
+    metaDescription: string
+    finalUrl: string
+    screenshot: string
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!url) return
+    const stored = sessionStorage.getItem(`capture:${url}`)
+    if (stored) {
+      setCapture(JSON.parse(stored))
+    }
+    setLoading(false)
+  }, [url])
+
+  const pageTitle = capture?.title || url || "Unknown URL"
+  const displayUrl = capture?.finalUrl || url
+  const description = capture?.metaDescription || ""
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -101,8 +130,13 @@ function ReportContent() {
         <div className="mb-10">
           <p className="text-sm font-medium text-blue-500">Intelligence Report</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-zinc-100">
-            {url}
+            {pageTitle}
           </h1>
+          {description && (
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
+              {description}
+            </p>
+          )}
         </div>
 
         {/* Website preview + Score grid */}
@@ -116,18 +150,26 @@ function ReportContent() {
                 <div className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
               </div>
               <div className="ml-3 flex-1 truncate rounded-md bg-zinc-800/50 px-3 py-1 text-xs text-zinc-500">
-                {url}
+                {displayUrl}
               </div>
             </div>
-            <div className="flex aspect-[4/3] items-center justify-center bg-zinc-900/80 p-8">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <Globe className="h-10 w-10 text-zinc-700" />
-                <div className="space-y-1">
-                  <div className="mx-auto h-2 w-32 rounded-full bg-zinc-800" />
-                  <div className="mx-auto h-2 w-24 rounded-full bg-zinc-800/60" />
+            <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-zinc-900/80">
+              {capture?.screenshot ? (
+                <img
+                  src={capture.screenshot}
+                  alt={`Screenshot of ${pageTitle}`}
+                  className="h-full w-full object-cover object-top"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-center p-8">
+                  <Globe className="h-10 w-10 text-zinc-700" />
+                  <div className="space-y-1">
+                    <div className="mx-auto h-2 w-32 rounded-full bg-zinc-800" />
+                    <div className="mx-auto h-2 w-24 rounded-full bg-zinc-800/60" />
+                  </div>
+                  <p className="text-xs text-zinc-600">Preview unavailable</p>
                 </div>
-                <p className="text-xs text-zinc-600">Preview unavailable</p>
-              </div>
+              )}
             </div>
           </div>
 
