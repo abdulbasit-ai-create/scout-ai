@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import AnalysisLoading from "@/components/analysis-loading"
+import AnalysisLoading from "@/components/landing/analysis-loading"
 
 function normalizeUrl(str: string) {
   const s = str.trim()
@@ -78,9 +78,9 @@ export default function Hero() {
           <span className="bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 bg-clip-text text-transparent">
             AI-Powered
           </span>{" "}
-          <span className="text-white">Website</span>
+          <span className="text-zinc-900 dark:text-white">Website</span>
           <br />
-          <span className="text-white">Intelligence</span>
+          <span className="text-zinc-900 dark:text-white">Intelligence</span>
         </h1>
 
         {/* Subtitle */}

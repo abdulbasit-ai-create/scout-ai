@@ -4,7 +4,7 @@ import { Wappalyzer, technologies, categories } from "wapalyzer-core"
 import crypto from "node:crypto"
 import path from "node:path"
 import fs from "node:fs"
-import { checkRateLimit, type LimitKind } from "@/lib/rate-limit"
+import { checkRateLimit, type LimitKind } from "@/lib/security/rate-limit"
 
 export const runtime = "nodejs"
 

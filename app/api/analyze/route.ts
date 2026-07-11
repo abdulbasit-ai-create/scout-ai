@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { checkRateLimit, type LimitKind } from "@/lib/rate-limit"
+import { checkRateLimit, type LimitKind } from "@/lib/security/rate-limit"
 
 export const runtime = "nodejs"
 

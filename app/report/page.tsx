@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState, useCallback } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -24,12 +24,9 @@ import {
   TrendingUp,
   Zap,
   Printer,
-  Copy,
   Check,
-  History,
-  ExternalLink,
 } from "lucide-react"
-import { trackAnalysis } from "@/lib/analytics"
+import { trackAnalysis } from "@/lib/analysis/analytics"
 
 interface Analysis {
   hasHttps: boolean
@@ -117,7 +114,7 @@ function StatCard({ icon: Icon, value, label, color }: {
       <p className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">
         {value}
       </p>
-      <p className="mt-1 text-xs text-zinc-500">{label}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -133,7 +130,7 @@ function Section({
 }) {
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-zinc-100">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <Icon className="h-5 w-5 shrink-0 text-blue-500" aria-hidden="true" />
         {title}
       </h2>
@@ -152,26 +149,6 @@ function HeaderValue({ label, value }: { label: string; value: string | null }) 
         )}
       </p>
     </div>
-  )
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }).catch(() => {})
-  }, [text])
-  return (
-    <button
-      onClick={handleCopy}
-      aria-label={copied ? "Copied" : "Copy to clipboard"}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
-    >
-      {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-      {copied ? "Copied" : "Copy"}
-    </button>
   )
 }
 
@@ -199,11 +176,10 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function AiReportSection({ report, loading, error, captureUrl }: {
+function AiReportSection({ report, loading, error }: {
   report: AiReport | null
   loading: boolean
   error: string | null
-  captureUrl: string
 }) {
   if (loading) {
     return (
@@ -239,10 +215,10 @@ function AiReportSection({ report, loading, error, captureUrl }: {
         <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
           <ScoreRing score={report.overallScore} />
           <div>
-            <h2 className="mb-1 text-lg font-semibold text-zinc-100">
+            <h2 className="mb-1 text-lg font-semibold text-foreground">
               AI Intelligence Score
             </h2>
-            <p className="max-w-lg text-sm leading-relaxed text-zinc-400">
+            <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
               {report.scoreExplanation}
             </p>
           </div>
@@ -250,7 +226,7 @@ function AiReportSection({ report, loading, error, captureUrl }: {
       </div>
 
       <Section title="Executive Summary" icon={Brain}>
-        <p className="text-sm leading-relaxed text-zinc-400 print:text-zinc-800">
+          <p className="text-sm leading-relaxed text-muted-foreground print:text-zinc-800">
           {report.executiveSummary}
         </p>
       </Section>
@@ -513,7 +489,7 @@ function ReportContent() {
   const description = c?.metaDescription || ""
 
   return (
-    <div className="min-h-screen bg-zinc-950 print:bg-white">
+    <div className="min-h-screen bg-background print:bg-white">
       {/* Print header — only visible when printing */}
       <div className="hidden print:block print:px-6 print:py-4">
         <h1 className="text-xl font-bold text-zinc-900">Scout AI — Intelligence Report</h1>
@@ -530,7 +506,7 @@ function ReportContent() {
               </p>
               {a && <Badge label="HTTPS" ok={a.hasHttps} />}
             </div>
-            <h1 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 break-words">
+            <h1 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-foreground break-words">
               {pageTitle}
             </h1>
             {description && (
@@ -721,7 +697,6 @@ function ReportContent() {
             report={aiReport}
             loading={aiLoading}
             error={aiError}
-            captureUrl={capture.finalUrl}
           />
         </div>
 

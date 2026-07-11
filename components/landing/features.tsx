@@ -38,10 +38,10 @@ export default function Features() {
                   <Icon className="h-6 w-6 text-blue-500 transition-transform duration-300 group-hover:scale-110" />
                 </div>
 
-                <h3 className="mb-2 text-lg font-semibold text-zinc-100">
+                <h3 className="mb-2 text-lg font-semibold text-foreground">
                   {feature.title}
                 </h3>
-                <p className="text-sm leading-relaxed text-zinc-400">
+                <p className="text-sm leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>
               </div>

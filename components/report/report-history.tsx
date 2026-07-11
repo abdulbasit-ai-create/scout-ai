@@ -37,11 +37,11 @@ export default function ReportHistory() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-10 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <History className="h-5 w-5 text-blue-500" aria-hidden="true" />
               Report History
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">Your recently analyzed websites</p>
+            <p className="mt-1 text-sm text-muted-foreground">Your recently analyzed websites</p>
           </div>
           <button
             onClick={clearHistory}
@@ -60,16 +60,16 @@ export default function ReportHistory() {
               <Link
                 key={item.finalUrl}
                 href={`/report?id=${id}`}
-                className="group rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 transition-all duration-200 hover:border-blue-500/40 hover:bg-zinc-900/60"
+                className="group rounded-xl border border-border bg-card/30 p-5 transition-all duration-200 hover:border-blue-500/40 hover:bg-card/60"
               >
                 <div className="mb-2 flex items-center gap-2">
                   <Globe className="h-4 w-4 text-blue-500 shrink-0" aria-hidden="true" />
-                  <h3 className="truncate text-sm font-semibold text-zinc-200 group-hover:text-zinc-100">
+                  <h3 className="truncate text-sm font-semibold text-foreground group-hover:text-foreground">
                     {item.title || item.finalUrl}
                   </h3>
                 </div>
-                <p className="mb-3 truncate text-xs text-zinc-600">{item.finalUrl}</p>
-                <div className="flex items-center gap-3 text-xs text-zinc-600">
+                <p className="mb-3 truncate text-xs text-muted-foreground">{item.finalUrl}</p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {item.analysis?.loadTimeMs && (
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3 w-3" aria-hidden="true" />
