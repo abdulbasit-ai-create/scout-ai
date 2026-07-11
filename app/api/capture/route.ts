@@ -4,6 +4,7 @@ import { Wappalyzer, technologies, categories } from "wapalyzer-core"
 import crypto from "node:crypto"
 import path from "node:path"
 import fs from "node:fs"
+import { checkRateLimit, type LimitKind } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -13,6 +14,39 @@ fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 // Init Wappalyzer once
 Wappalyzer.setTechnologies(technologies)
 Wappalyzer.setCategories(categories)
+
+function getClientIp(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || "127.0.0.1"
+}
+
+function validateUrl(str: string): string | null {
+  if (!str || typeof str !== "string") return null
+  const s = str.trim()
+  try {
+    const url = new URL(s.startsWith("http") ? s : `https://${s}`)
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null
+    // Block private/reserved IPs
+    const hostname = url.hostname.toLowerCase()
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("172.16.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal")
+    ) {
+      return null
+    }
+    return url.href
+  } catch {
+    return null
+  }
+}
 
 async function fetchUrl(
   url: string
@@ -27,10 +61,29 @@ async function fetchUrl(
 }
 
 export async function POST(req: NextRequest) {
-  const { url } = await req.json()
+  // Rate limit
+  const ip = getClientIp(req)
+  const limit = checkRateLimit(ip, "capture" as LimitKind)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Retry in ${Math.ceil(limit.resetAfter / 1000)}s.` },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(limit.resetAfter / 1000)),
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    )
+  }
 
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "URL is required" }, { status: 400 })
+  const { url: rawUrl } = await req.json()
+  const url = validateUrl(rawUrl)
+  if (!url) {
+    return NextResponse.json(
+      { error: "A valid public website URL is required (e.g., https://example.com)" },
+      { status: 400 }
+    )
   }
 
   let browser
@@ -43,7 +96,6 @@ export async function POST(req: NextRequest) {
     })
     const page = await context.newPage()
 
-    // Track redirects from page events
     const redirectUrls: string[] = []
     let responseHeaders: Record<string, string> = {}
 
@@ -54,7 +106,6 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // Navigate
     const startTime = Date.now()
     const resp = await page.goto(url, {
       waitUntil: "networkidle",
@@ -63,24 +114,20 @@ export async function POST(req: NextRequest) {
     const loadTimeMs = Date.now() - startTime
     const finalUrl = page.url()
 
-    // Capture response headers from the final navigation
     if (resp) {
       responseHeaders = resp.headers() as Record<string, string>
-      // Build redirect chain from request object
       let req2 = resp.request()
       const chain: string[] = []
       while (req2) {
         chain.unshift(req2.url())
         req2 = req2.redirectedFrom() as any
       }
-      // Only add to redirectUrls if we captured any
       if (chain.length > 1) {
         redirectUrls.length = 0
         redirectUrls.push(...chain.slice(0, -1))
       }
     }
 
-    // --- Extract page metadata ---
     const title = await page.title()
     const metaDescription = await page
       .$eval('meta[name="description"]', (el) =>
@@ -88,7 +135,6 @@ export async function POST(req: NextRequest) {
       )
       .catch(() => "")
 
-    // --- OG & Twitter tags ---
     const ogTags = await page.evaluate(() => {
       const tags: Record<string, string> = {}
       document
@@ -112,24 +158,20 @@ export async function POST(req: NextRequest) {
       return tags
     })
 
-    // --- Favicon ---
     const favicon = await page
       .$eval(
         'link[rel~="icon"]',
         (el) => (el as HTMLLinkElement).href
       )
       .catch(() => {
-        // Default to /favicon.ico
         const u = new URL(finalUrl)
         return `${u.protocol}//${u.host}/favicon.ico`
       })
 
-    // --- Page size ---
     const pageSizeBytes = responseHeaders["content-length"]
       ? parseInt(responseHeaders["content-length"], 10)
       : (await page.content()).length
 
-    // --- Take full-page screenshot ---
     const hash = crypto
       .createHash("md5")
       .update(finalUrl)
@@ -139,7 +181,6 @@ export async function POST(req: NextRequest) {
     const filepath = path.join(SCREENSHOTS_DIR, filename)
     await page.screenshot({ path: filepath, fullPage: true })
 
-    // --- Collect data for Wappalyzer ---
     const html = await page.content()
     const scripts = await page.evaluate(() =>
       Array.from(document.scripts).map((s) => s.src).filter(Boolean)
@@ -160,7 +201,6 @@ export async function POST(req: NextRequest) {
       return m
     })
 
-    // Build headers in array format for Wappalyzer
     const wappHeaders: Record<string, string[]> = {}
     for (const [k, v] of Object.entries(responseHeaders)) {
       wappHeaders[k] = [String(v)]
@@ -170,7 +210,6 @@ export async function POST(req: NextRequest) {
       wappMeta[k] = v
     }
 
-    // Build cookie string
     const cookies = await context.cookies()
     const cookieMap: Record<string, string[]> = {}
     for (const c of cookies) {
@@ -194,7 +233,6 @@ export async function POST(req: NextRequest) {
       xhr: "",
     })
 
-    // Deduplicate and extract technology names
     const seen = new Set<string>()
     const technologiesDetected: { name: string; version?: string }[] = []
     for (const r of techResult) {
@@ -208,7 +246,6 @@ export async function POST(req: NextRequest) {
     await browser.close()
     browser = null
 
-    // --- Check robots.txt & sitemap.xml (separate HTTP fetches) ---
     const urlObj = new URL(finalUrl)
     const origin = `${urlObj.protocol}//${urlObj.host}`
 
@@ -217,10 +254,8 @@ export async function POST(req: NextRequest) {
       fetchUrl(`${origin}/sitemap.xml`),
     ])
 
-    // Detect HTTPS
     const hasHttps = finalUrl.startsWith("https://")
 
-    // Security headers
     const sec = responseHeaders
     const securityHeaders = {
       contentSecurityPolicy: sec["content-security-policy"] || null,

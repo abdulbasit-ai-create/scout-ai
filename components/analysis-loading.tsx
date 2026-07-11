@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Scan } from "lucide-react"
+import { Scan, AlertCircle } from "lucide-react"
 import {
   Progress,
   ProgressTrack,
   ProgressIndicator,
-  ProgressLabel,
 } from "@/components/ui/progress"
 
 const STAGES: { label: string; range: [number, number] }[] = [
@@ -40,20 +39,18 @@ export default function AnalysisLoading({ url }: { url: string }) {
         })
 
         if (!res.ok) {
-          const err = await res.json()
+          const err = await res.json().catch(() => ({ error: `Request failed (${res.status})` }))
           throw new Error(err.error || "Capture failed")
         }
 
         const data = await res.json()
         if (cancelled) return
 
-        // Store in sessionStorage so the report page can read it
         sessionStorage.setItem(
           `capture:${url}`,
           JSON.stringify(data)
         )
 
-        // Navigate to report
         router.push(`/report?url=${encodeURIComponent(url)}`)
       } catch (err: any) {
         if (cancelled) return
@@ -63,7 +60,6 @@ export default function AnalysisLoading({ url }: { url: string }) {
 
     capture()
 
-    // Progress bar animation while waiting
     const timer = setInterval(() => {
       const elapsed = Date.now() - startedAt.current
       const ratio = Math.min(elapsed / 12000, 1)
@@ -78,8 +74,7 @@ export default function AnalysisLoading({ url }: { url: string }) {
   }, [url, router])
 
   return (
-    <section className="relative flex flex-col items-center justify-center overflow-hidden px-6 pt-36 pb-28 text-center">
-      {/* Same background as hero for seamless transition */}
+    <section className="relative flex flex-col items-center justify-center overflow-hidden px-6 pt-28 pb-24 text-center" aria-label="Analysis in progress">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,_var(--tw-gradient-stops))] from-blue-500/20 via-blue-500/5 to-transparent" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -93,45 +88,52 @@ export default function AnalysisLoading({ url }: { url: string }) {
       <div className="relative z-10 flex max-w-lg flex-col items-center gap-8">
         {/* Animated radar rings */}
         <div className="relative flex h-24 w-24 items-center justify-center">
-          <div className="absolute inset-0 animate-ping rounded-full border border-blue-500/30" />
+          <div className="absolute inset-0 animate-ping rounded-full border border-blue-500/30" aria-hidden="true" />
           <div
             className="absolute inset-4 animate-ping rounded-full border border-blue-500/20"
             style={{ animationDelay: "0.3s", animationDuration: "2.5s" }}
+            aria-hidden="true"
           />
           <div
             className="absolute inset-8 animate-ping rounded-full border border-blue-500/10"
             style={{ animationDelay: "0.6s", animationDuration: "2.5s" }}
+            aria-hidden="true"
           />
           <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500/10">
-            <Scan className="h-7 w-7 text-blue-500" />
+            <Scan className="h-7 w-7 text-blue-500" aria-hidden="true" />
           </div>
         </div>
 
         {/* URL being analyzed */}
         <div className="text-center">
           <p className="text-sm font-medium text-zinc-500">Analyzing</p>
-          <p className="mt-1 max-w-md truncate text-lg font-semibold text-zinc-100">
+          <p className="mt-1 max-w-md truncate text-base sm:text-lg font-semibold text-zinc-100">
             {url}
           </p>
         </div>
 
         {/* Current stage label */}
-        <p className="text-blue-400 transition-all duration-300">
+        <p className="text-sm text-blue-400 transition-all duration-300" aria-live="polite">
           {currentStage.label}
         </p>
 
         {/* Progress bar */}
-        <div className="w-full max-w-sm">
-          <Progress value={progress}>
-            <ProgressTrack className="h-1.5 rounded-full bg-zinc-800" />
-            <ProgressIndicator className="rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-150" />
-          </Progress>
-        </div>
+        {!error && (
+          <div className="w-full max-w-sm">
+            <Progress value={progress}>
+              <ProgressTrack className="h-1.5 rounded-full bg-zinc-800" />
+              <ProgressIndicator className="rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-150" />
+            </Progress>
+          </div>
+        )}
 
         {/* Error state */}
         {error && (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-sm text-red-400">{error}</p>
+          <div className="flex flex-col items-center gap-4" role="alert">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="h-5 w-5" aria-hidden="true" />
+              <p className="text-sm">{error}</p>
+            </div>
             <button
               onClick={() => router.push("/")}
               className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"

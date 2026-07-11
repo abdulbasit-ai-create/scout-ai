@@ -127,3 +127,84 @@
     @apply font-sans;
   }
 }
+
+/* ===== Print styles ===== */
+@media print {
+  /* Hide interactive elements */
+  header {
+    display: none !important;
+  }
+
+  /* Show print-specific elements */
+  .hidden.print\:block {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Remove dark backgrounds, use white */
+  .bg-zinc-950,
+  .bg-zinc-900\/30,
+  .bg-zinc-900\/40,
+  .bg-zinc-900\/50,
+  .bg-zinc-900\/80,
+  .bg-zinc-900\/60,
+  .bg-zinc-800\/50,
+  .bg-zinc-800 {
+    background: white !important;
+  }
+
+  /* Dark text on white */
+  .text-zinc-100,
+  .text-zinc-200,
+  .text-zinc-300,
+  .text-zinc-400,
+  .text-zinc-500 {
+    color: #1a1a1a !important;
+  }
+
+  /* Borders lighten */
+  .border-zinc-800,
+  .border-zinc-700,
+  .border-zinc-800\/50 {
+    border-color: #e0e0e0 !important;
+  }
+
+  /* Force sections to not break across pages badly */
+  section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Score ring adjustments */
+  svg circle[stroke="oklch(0.269 0 0)"] {
+    stroke: #e0e0e0 !important;
+  }
+
+  /* No page margins waste */
+  @page {
+    margin: 1.5cm;
+  }
+
+  /* Ensure images print */
+  img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Buttons in print */
+  button,
+  [role="toolbar"] {
+    display: none !important;
+  }
+}
+
+/* ===== Responsive touch targets ===== */
+@media (pointer: coarse) {
+  button, a {
+    min-height: 44px;
+  }
+}
